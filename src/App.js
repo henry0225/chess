@@ -2,6 +2,7 @@ import {useRef, useState} from 'react';
 import { Chessboard } from 'react-chessboard';
 import './App.css';
 import Chess from 'chess.js';
+import clone from 'just-clone';
 
 export default function App({ boardWidth }) {
   const [game, setGame] = useState(new Chess());
@@ -16,46 +17,36 @@ export default function App({ boardWidth }) {
     });
   }
 
-  function makeRandomMove() {
-    const possibleMoves = game.moves();
-
-    // exit if the game is over
-    if (game.game_over() || game.in_draw() || possibleMoves.length === 0) return;
-
-    const randomIndex = Math.floor(Math.random() * possibleMoves.length);
-
-    const gameCopy = {...game};
-    gameCopy.move("Nc6");
-    game.move("Na6");
-    console.log(gameCopy);
-    console.log(game);
-    safeGameMutate((game) => {
-      console.log(possibleMoves);
-      console.log(game.fen());
-      game.move(possibleMoves[randomIndex]);
-    });
-  }
-
   function makeMove(){
     const possibleMoves = game.moves();
     if (game.game_over() || game.in_draw() || possibleMoves.length === 0) return;
 
-    const gameCopy = Object.assign({}, game);
+    const gameCopy = new Chess(game.fen());
+    gameCopy.load("RN5n/6p1/1pKR2P1/1P2pb2/2pq4/5k2/7r/4r3 w - - 0 1");
     const possibleCopyMoves = gameCopy.moves();
-    game.move("Na6");
-    gameCopy.move("Nc6");
     console.log(gameCopy);
     console.log(game);
 
     safeGameMutate((game) => {
-      console.log(possibleMoves);
-      console.log(possibleCopyMoves);
-      console.log(game.fen());
-      console.log(gameCopy.fen());
-      game.move(possibleMoves[5]);
+      game.move(possibleMoves[bestMove(possibleMoves, game.fen())]);
     });
   }
 
+  function bestMove(possibleMoves, fen){
+    var nextBoard = [];
+    var evaluations = [];
+    for(let i = 0; i < possibleMoves.length; i++){
+      const gameCopy = new Chess(fen);
+      gameCopy.move(possibleMoves[i]);
+      evaluations[i] = evaluation(gameCopy);
+      nextBoard.push()
+    }
+    return 1;
+  }
+
+  function evaluation(game){
+    
+  }
   function onDrop(sourceSquare, targetSquare) {
     const gameCopy = { ...game };
     const move = gameCopy.move({
