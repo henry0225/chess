@@ -8,7 +8,7 @@ export default function App({ boardWidth }) {
   const [game, setGame] = useState(new Chess());
   const [currentTimeout, setCurrentTimeout] = useState(undefined);
   const chessboardRef = useRef();
-
+  var [boardOrientation, setBoardOrientation] = useState([]);
   function safeGameMutate(modify) {
     setGame((g) => {
       const update = { ...g };
@@ -65,6 +65,10 @@ export default function App({ boardWidth }) {
     return true;
   }
 
+  function changeColor(){
+
+  }
+
   return (
     <div>
       <Chessboard
@@ -72,8 +76,8 @@ export default function App({ boardWidth }) {
         animationDuration={200}
         arePremovesAllowed={true}
         boardWidth={boardWidth}
+        boardOrientation={boardOrientation}
         position={game.fen()}
-        isDraggablePiece={({ piece }) => piece[0] === 'w'}
         onPieceDrop={onDrop}
         customBoardStyle={{
           borderRadius: '4px',
@@ -91,6 +95,9 @@ export default function App({ boardWidth }) {
           chessboardRef.current.clearPremoves();
           // stop any current timeouts
           clearTimeout(currentTimeout);
+          if(boardOrientation === 'black'){
+            makeMove();
+          }
         }}
       >
         reset
@@ -110,6 +117,23 @@ export default function App({ boardWidth }) {
         }}
       >
         undo
+      </button>
+
+      <button
+        className="rc-button"
+        onClick={() => {
+          safeGameMutate((game) => {
+            game.reset();
+          });
+          chessboardRef.current.clearPremoves();
+          clearTimeout(currentTimeout);
+          setBoardOrientation((currentOrientation) => (currentOrientation === 'black' ? 'white' : 'black'));
+          if(boardOrientation === 'black'){
+            makeMove();
+          }
+        }}
+      >
+        flip board
       </button>
     </div>
   );
