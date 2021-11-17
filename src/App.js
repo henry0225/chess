@@ -8,7 +8,8 @@ export default function App({ boardWidth }) {
   const [game, setGame] = useState(new Chess());
   const [currentTimeout, setCurrentTimeout] = useState(undefined);
   const chessboardRef = useRef();
-  var [boardOrientation, setBoardOrientation] = useState([]);
+  var [boardOrientation, setBoardOrientation] = useState('white');
+  var [color, setColor] = useState('white')
   function safeGameMutate(modify) {
     setGame((g) => {
       const update = { ...g };
@@ -60,7 +61,7 @@ export default function App({ boardWidth }) {
     if (move === null) return false;
 
     // store timeout so it can be cleared on undo/reset so computer doesn't execute move
-    const newTimeout = setTimeout(makeMove, 2000);
+    const newTimeout = setTimeout(makeMove, 500);
     setCurrentTimeout(newTimeout);
     return true;
   }
@@ -95,7 +96,7 @@ export default function App({ boardWidth }) {
           chessboardRef.current.clearPremoves();
           // stop any current timeouts
           clearTimeout(currentTimeout);
-          if(boardOrientation === 'black'){
+          if (boardOrientation === 'white' || boardOrientation == null || boardOrientation == undefined){
             makeMove();
           }
         }}
@@ -128,13 +129,28 @@ export default function App({ boardWidth }) {
           chessboardRef.current.clearPremoves();
           clearTimeout(currentTimeout);
           setBoardOrientation((currentOrientation) => (currentOrientation === 'black' ? 'white' : 'black'));
-          if(boardOrientation === 'black'){
+          if (boardOrientation === 'white' || boardOrientation == null || boardOrientation == undefined){
             makeMove();
           }
+          if(color === 'white'){
+            setColor('black')
+          }else{
+            setColor('white')
+          }
+        }}
+      >
+        change color
+      </button>
+      <button
+        className="rc-button"
+        onClick={() => {
+          setBoardOrientation((currentOrientation) => (currentOrientation === 'black' ? 'white' : 'black'));
         }}
       >
         flip board
       </button>
+
+      {color}
     </div>
   );
 }
