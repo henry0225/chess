@@ -29,11 +29,9 @@ export default function App({ boardWidth }) {
     const gameCopy = new Chess(game.fen());
     gameCopy.load("RN5n/6p1/1pKR2P1/1P2pb2/2pq4/5k2/7r/4r3 w - - 0 1");
     const possibleCopyMoves = gameCopy.moves();
-    console.log(gameCopy);
-    console.log(game);
-
     safeGameMutate((game) => {
       game.move(possibleMoves[bestMove(possibleMoves, game.fen())]);
+      console.log(evaluation(game))
     });
   }
 
@@ -49,7 +47,16 @@ export default function App({ boardWidth }) {
     console.log(possibleMoves)
     console.log(evaluations)
     console.log(nextBoard)
-    return 1;
+    var max = 0;
+    var maxIndex = 0;
+    for(let k = 0; k < evaluations.length; k++){
+      if(evaluations[k] > max){
+        max = evaluations[k]
+        maxIndex = k
+      }
+    }
+    console.log("Going to play move " + maxIndex + " that gives value " + max)
+    return maxIndex;
   }
 
   function evaluation(game){
@@ -119,18 +126,89 @@ export default function App({ boardWidth }) {
       }
     }
     console.log(white, black)
-    return white - black;
+    return black - white;
   }
 
+Pawn: [[90, 92, 94, 99, 99, 94, 92, 90],
+[24, 26, 27, 29, 29, 27, 26, 24],
+[15, 17, 18, 20, 20, 18, 17, 15],
+[13, 14, 15, 17, 17, 15, 14, 13],
+[12, 13, 14, 16, 16, 14, 13, 12],
+[10, 12, 13, 14, 14, 13, 12, 10],
+[10, 10, 10, 10, 10, 10, 10, 10],
+[0, 0, 0, 0, 0, 0, 0, 0]]
+
+
+
+Knight: [[23, 25, 26, 26, 26, 26, 25, 23],
+[25, 32, 33, 34, 34, 33, 32, 25],
+[27, 37, 39, 39, 39, 39, 37, 27],
+[29, 33, 35, 37, 37, 35, 33, 29],
+[30, 33, 37, 37, 37, 37, 33, 30],
+[35, 37, 39, 39, 39, 39, 37, 35],
+[25, 32, 33, 34, 34, 33, 32, 25],
+[23, 25, 26, 26, 26, 26, 25, 23]]
+
+Bishop: [[40, , , 25, 25, , , 40],
+[, , , , , , , ],
+[, , , , , , , ],
+[, , , , , , , ],
+[, , , , , , , ],
+[, , , , , , , ],
+[, , , , , , , ],
+[40, , ,25 , 25, , , 40]]
+
+Rook: [[, , , , , , , ],
+[, , , , , , , ],
+[, , , , , , , ],
+[, , , , , , , ],
+[, , , , , , , ],
+[, , , , , , , ],
+[, , , , , , , ],
+[, , , , , , , ]]
+
+
+
+
   function knight(square){
+    var matrix = [
+  [23, 25, 26, 26, 26, 26, 25, 23],
+  [25, 32, 33, 34, 34, 33, 32, 25],
+  [27, 37, 39, 39, 39, 39, 37, 27],
+  [29, 33, 35, 37, 37, 35, 33, 29],
+  [30, 33, 37, 37, 37, 37, 33, 30],
+  [35, 37, 39, 39, 39, 39, 37, 35],
+  [25, 32, 33, 34, 34, 33, 32, 25],
+  [23, 25, 26, 26, 26, 26, 25, 23]
+    ]
     return 3;
   }
 
   function pawn(square, color){
+    var whiteMatrix =  [
+  [90, 92, 94, 99, 99, 94, 92, 90],
+  [24, 26, 27, 29, 29, 27, 26, 24],
+  [15, 17, 18, 20, 20, 18, 17, 15],
+  [13, 14, 15, 17, 17, 15, 14, 13],
+  [12, 13, 14, 16, 16, 14, 13, 12],
+  [10, 12, 13, 14, 14, 13, 12, 10],
+  [10, 10, 10, 10, 10, 10, 10, 10],
+  [0, 0, 0, 0, 0, 0, 0, 0]
+  ]
     return 1;
   }
 
   function bishop(square){
+    var matrix = [
+    [40, , , 25, 25, , , 40],
+  [, , , , , , , ],
+  [, , , , , , , ],
+  [, , , , , , , ],
+  [, , , , , , , ],
+  [, , , , , , , ],
+  [, , , , , , , ],
+  [40, 38, ,25 , 25, , , 40]
+  ]
     return 3;
   }
 
@@ -256,7 +334,7 @@ export default function App({ boardWidth }) {
           chessboardRef.current.clearPremoves();
           // stop any current timeouts
           clearTimeout(currentTimeout);
-          if (boardOrientation === 'white' || boardOrientation === null || boardOrientation === undefined){
+          if (boardOrientation === 'black' || boardOrientation === null || boardOrientation === undefined){
             makeMove();
           }
         }}
@@ -268,7 +346,6 @@ export default function App({ boardWidth }) {
         onClick={() => {
           // undo twice to undo computer move too
           safeGameMutate((game) => {
-            game.undo();
             game.undo();
           });
           // clear premove queue
