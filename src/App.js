@@ -1,14 +1,15 @@
+// ENGINE NAME:
+// OPERATION THANOS
+
 
 /*
 Future plans:
 Back end:
--Implement PST into evaluations
 -Begin working on tree and Nth-depth searching
 -Look into potential ways to map board onto array in O(1)
 -Can implement multiple PST's for different stages of the game, maybe at a certain number of moves we can
 loosen discouragements from edges and whatnot, endgame can make pawns worth more etc.
 Front end:
--See if we can implement move history
 -Make the buttons look prettier and display color as well as current game state
 -Look into implementing pop-ups for checkmate/stalemate
 */
@@ -25,7 +26,6 @@ export default function App({ boardWidth }) {
   // hooks
   const [rightClickedSquares, setRightClickedSquares] = useState({});
   const [moveSquares, setMoveSquares] = useState({});
-  const [moveFrom, setMoveFrom] = useState('');
   const [optionSquares, setOptionSquares] = useState({});
   const [arrows, setArrows] = useState([]);
   var [boardOrientation, setBoardOrientation] = useState('white');
@@ -56,11 +56,11 @@ export default function App({ boardWidth }) {
       }
       return;
     }
-    console.log(game.pgn())
     const gameCopy = new Chess(game.fen());
     gameCopy.load("RN5n/6p1/1pKR2P1/1P2pb2/2pq4/5k2/7r/4r3 w - - 0 1");
     const possibleCopyMoves = gameCopy.moves();
     safeGameMutate((game) => {
+      console.log("MOVED")
       game.move(possibleMoves[bestMove(possibleMoves, game.fen())]);
     });
     console.log(game.turn())
@@ -69,24 +69,29 @@ export default function App({ boardWidth }) {
   function bestMove(possibleMoves, fen){
     var nextBoard = [];
     var evaluations = [];
-    for(let i = 0; i < possibleMoves.length; i++){
+    for (let i = 0; i < possibleMoves.length; i++){
       const gameCopy = new Chess(fen);
       gameCopy.move(possibleMoves[i]);
       evaluations[i] = evaluation(gameCopy);
-      nextBoard.push(gameCopy)
+      nextBoard[i] = (gameCopy)
     }
     console.log(possibleMoves)
     console.log(evaluations)
     console.log(nextBoard)
-    var max = -1000;
+    var max = 1000;
+    if (color === 'black'){
+      max *= -1
+      // todo: evil bit hacking thing that does the same thing except looks 10x cooler
+    }
+    
     var maxIndex = 0;
     for(let k = 0; k < evaluations.length; k++){
-      if(evaluations[k] >= max){
+      if(evaluations[k] <= max){
         max = evaluations[k]
         maxIndex = k
       }
     }
-    console.log("Going to play move " + maxIndex + " that gives value " + max)
+    console.log("Going to play move " + possibleMoves[maxIndex] + " that gives value " + max)
     return maxIndex;
   }
 
@@ -156,153 +161,134 @@ export default function App({ boardWidth }) {
         }
       }
     }
-    return black - white;
+    return white - black;
   }
-/*
-Pawn: 
-[0, 0, 0, 0, 0, 0, 0, 0,
-24, 26, 27, 29, 29, 27, 26, 24,
-15, 17, 18, 20, 20, 18, 17, 15,
-13, 14, 15, 17, 17, 15, 14, 13,
-12, 13, 14, 16, 16, 14, 13, 12,
-10, 12, 13, 14, 14, 13, 12, 10,
-10, 10, 10, 10, 10, 10, 10, 10,
-0, 0, 0, 0, 0, 0, 0, 0]
 
-
-
-Knight: encourage the corners of the center, avoid edges and strongly avoid corners
-[23, 25, 26, 26, 26, 26, 25, 23,
-25, 32, 33, 34, 34, 33, 32, 25,
-27, 37, 38, 38, 38, 38, 37, 27,
-29, 33, 35, 37, 37, 35, 33, 29,
-30, 33, 37, 37, 37, 37, 33, 30,
-35, 37, 38, 38, 38, 38, 37, 35,
-25, 32, 33, 34, 34, 33, 32, 25,
-23, 25, 26, 26, 26, 26, 25, 23]
-
-Bishop: Encourage moving to square near (but not directly in) the center, avoid edges and corners
-[25, 25, 25, 25, 25, 25, 25, 25,
-25, 30, 30, 30, 30, 30, 30, 25,
-25, 30, 35, 30, 30, 35, 30, 25,
-27, 35, 40, 35, 35, 40, 35, 27,
-27, 35, 40, 35, 35, 40, 35, 27,
-25, 30, 35, 30, 30, 35, 30, 25,
-25, 30, 30, 30, 30, 30, 30, 25,
-25, 25, 25, 25, 25, 25, 25, 25]
-
-WRook: Encourage castling, discourage movement in the middle of the board, encourage 7th rank and 8th rank
-positioning
-[55, 57, 57, 60, 60, 57, 57, 55,
-60, 60, 60, 60, 60, 60, 60, 60,
-50, 50, 48, 48, 48, 48, 50, 50,
-47, 47, 48, 48, 48, 48, 47, 47,
-47, 47, 48, 48, 48, 48, 47, 47,
-48, 48, 48, 50, 50, 48, 48, 48,
-53, 55, 55, 57, 57, 55, 55, 53,
-50, 53, 60, 55, 60, 53, 53, 50]
-
-BRook: 
-[50, 53, 53, 60, 55, 60, 53, 50
-53, 55, 55, 57, 57, 55, 55, 53,
-48, 48, 48, 50, 50, 48, 48, 48,
-47, 47, 48, 48, 48, 48, 47, 47,
-47, 47, 48, 48, 48, 48, 47, 47,
-50, 50, 48, 48, 48, 48, 50, 50,
-53, 55, 55, 57, 57, 55, 55, 53,
-55, 57, 57, 60, 60, 57, 57, 55,]
-
-Queen: Encourage movement in the center, discourage edges/corners
-[90, 92, 95, 97, 97, 95, 92, 90,
-92, 95, 97, 99, 99, 97, 95, 92,
-95, 97, 99, 99, 99, 99, 97, 95,
-95, 97, 99, 99, 99, 99, 97, 95,
-95, 97, 99, 99, 99, 99, 97, 95,
-95, 97, 99, 99, 99, 99, 97, 95,
-92, 95, 97, 99, 99, 97, 95, 92,
-90, 92, 95, 97, 97, 95, 92, 90]
-
-WKing: Encourage Castling, discourage moving before castling, discourage moving out
-[-5, -5, -5, -5, -5, -5, -5, -5,
--5, -5, -5, -5, -5, -5, -5, -5,
--5, -5, -5, -5, -5, -5, -5, -5,
--5, -5, -5, -5, -5, -5, -5, -5,
--5, -5, -5, -5, -5, -5, -5, -5,
--5, -5, -5, -5, -5, -5, -5, -5,
--5, -5, -5, -5, -5, -5, -5, -5,
-3, 5, 20, -10, 10, -10, 20, 5]
-
-BKing: Encourage castling, discourage moving before castling, discourage moving out
-[5, 20, -10, 10, -10, 20, 5, 3,
--5, -5, -5, -5, -5, -5, -5, -5,
--5, -5, -5, -5, -5, -5, -5, -5,
--5, -5, -5, -5, -5, -5, -5, -5,
--5, -5, -5, -5, -5, -5, -5, -5,
--5, -5, -5, -5, -5, -5, -5, -5,
--5, -5, -5, -5, -5, -5, -5, -5,
--5, -5, -5, -5, -5, -5, -5, -5]
-*/
   function knight(square){
-    /*var matrix = [
-  [23, 25, 26, 26, 26, 26, 25, 23],
-  [25, 32, 33, 34, 34, 33, 32, 25],
-  [27, 37, 39, 39, 39, 39, 37, 27],
-  [29, 33, 35, 37, 37, 35, 33, 29],
-  [30, 33, 37, 37, 37, 37, 33, 30],
-  [35, 37, 39, 39, 39, 39, 37, 35],
-  [25, 32, 33, 34, 34, 33, 32, 25],
-  [23, 25, 26, 26, 26, 26, 25, 23]
-    ]*/
-    return 3;
+    let matrix = 
+    [23, 25, 26, 26, 26, 26, 25, 23,
+    25, 32, 33, 34, 34, 33, 32, 25,
+    27, 37, 38, 38, 38, 38, 37, 27,
+    29, 33, 35, 37, 37, 35, 33, 29,
+    30, 33, 37, 37, 37, 37, 33, 30,
+    35, 37, 38, 38, 38, 38, 37, 35,
+    25, 32, 33, 34, 34, 33, 32, 25,
+    23, 25, 26, 26, 26, 26, 25, 23]
+
+    return matrix[square];
   }
 
   function pawn(square, color){
-    /*var whiteMatrix =  [
-  [90, 92, 94, 99, 99, 94, 92, 90],
-  [24, 26, 27, 29, 29, 27, 26, 24],
-  [15, 17, 18, 20, 20, 18, 17, 15],
-  [13, 14, 15, 17, 17, 15, 14, 13],
-  [12, 13, 14, 16, 16, 14, 13, 12],
-  [10, 12, 13, 14, 14, 13, 12, 10],
-  [10, 10, 10, 10, 10, 10, 10, 10],
-  [0, 0, 0, 0, 0, 0, 0, 0]
-    ]*/
-    return 1;
-  }
+    let whiteMatrix = 
+    [0, 0, 0, 0, 0, 0, 0, 0,
+    24, 26, 27, 29, 29, 27, 26, 24,
+    15, 17, 18, 20, 20, 18, 17, 15,
+    13, 14, 15, 17, 17, 15, 14, 13,
+    12, 13, 14, 16, 16, 14, 13, 12,
+    10, 12, 13, 14, 14, 13, 12, 10,
+    10, 10, 10, 10, 10, 10, 10, 10,
+    0, 0, 0, 0, 0, 0, 0, 0]
+    
+    let blackMatrix = 
+    [0, 0, 0, 0, 0, 0, 0, 0,
+    10, 10, 10, 10, 10, 10, 10, 10,
+    10, 12, 13, 14, 14, 13, 12, 10,
+    12, 13, 14, 16, 16, 14, 13, 12,
+    13, 14, 15, 17, 17, 15, 14, 13,
+    15, 17, 18, 20, 20, 18, 17, 15,
+    24, 26, 27, 29, 29, 27, 26, 24,
+    0, 0, 0, 0, 0, 0, 0, 0]
 
+    if(color === 'w'){
+      return whiteMatrix[square];
+    }else{
+      return blackMatrix[square];
+    }
+  }
+  
   function bishop(square){
-    /*var matrix = [
-    [40, , , 25, 25, , , 40],
-  [, , , , , , , ],
-  [, , , , , , , ],
-  [, , , , , , , ],
-  [, , , , , , , ],
-  [, , , , , , , ],
-  [, , , , , , , ],
-  [40, 38, ,25 , 25, , , 40]
-    ]*/
-    return 3;
+    let matrix = 
+    [25, 25, 25, 25, 25, 25, 25, 25,
+    25, 30, 30, 30, 30, 30, 30, 25,
+    25, 30, 35, 30, 30, 35, 30, 25,
+    27, 35, 40, 35, 35, 40, 35, 27,
+    27, 35, 40, 35, 35, 40, 35, 27,
+    25, 30, 35, 30, 30, 35, 30, 25,
+    25, 30, 30, 30, 30, 30, 30, 25,
+    25, 25, 25, 25, 25, 25, 25, 25]
+
+    return matrix[square];
   }
 
   function rook(square, color){
-    return 5;
+    let whiteMatrix = 
+    [50, 53, 53, 60, 55, 60, 53, 50,
+    53, 55, 55, 57, 57, 55, 55, 53,
+    48, 48, 48, 50, 50, 48, 48, 48,
+    47, 47, 48, 48, 48, 48, 47, 47,
+    47, 47, 48, 48, 48, 48, 47, 47,
+    50, 50, 48, 48, 48, 48, 50, 50,
+    53, 55, 55, 57, 57, 55, 55, 53,
+    55, 57, 57, 60, 60, 57, 57, 55,]
+
+    let blackMatrix = 
+    [50, 53, 53, 60, 55, 60, 53, 50,
+    53, 55, 55, 57, 57, 55, 55, 53,
+    48, 48, 48, 50, 50, 48, 48, 48,
+    47, 47, 48, 48, 48, 48, 47, 47,
+    47, 47, 48, 48, 48, 48, 47, 47,
+    50, 50, 48, 48, 48, 48, 50, 50,
+    53, 55, 55, 57, 57, 55, 55, 53,
+    55, 57, 57, 60, 60, 57, 57, 55,]
+
+    if (color === 'w') return whiteMatrix[square]
+    return blackMatrix[square];
   }
 
   function queen(square){
-    return 9;
+    let matrix = 
+    [90, 92, 95, 97, 97, 95, 92, 90,
+    92, 95, 97, 99, 99, 97, 95, 92,
+    95, 97, 99, 99, 99, 99, 97, 95,
+    95, 97, 99, 99, 99, 99, 97, 95,
+    95, 97, 99, 99, 99, 99, 97, 95,
+    95, 97, 99, 99, 99, 99, 97, 95,
+    92, 95, 97, 99, 99, 97, 95, 92,
+    90, 92, 95, 97, 97, 95, 92, 90]
+
+    return matrix[square]
   }
 
   function king(square, color){
-    return 10;
+    let blackMatrix = 
+    [16, 20, -10, 10, -10, 20, 18, 16,
+    -5, -5, -5, -5, -5, -5, -5, -5,
+    -5, -5, -5, -5, -5, -5, -5, -5,
+    -5, -5, -5, -5, -5, -5, -5, -5,
+    -5, -5, -5, -5, -5, -5, -5, -5,
+    -5, -5, -5, -5, -5, -5, -5, -5,
+    -5, -5, -5, -5, -5, -5, -5, -5,
+    -5, -5, -5, -5, -5, -5, -5, -5]
+
+    let whiteMatrix = 
+    [-5, -5, -5, -5, -5, -5, -5, -5,
+    -5, -5, -5, -5, -5, -5, -5, -5,
+    -5, -5, -5, -5, -5, -5, -5, -5,
+    -5, -5, -5, -5, -5, -5, -5, -5,
+    -5, -5, -5, -5, -5, -5, -5, -5,
+    -5, -5, -5, -5, -5, -5, -5, -5,
+    -5, -5, -5, -5, -5, -5, -5, -5,
+    16, 18, 20, -10, 10, -10, 20, 16]
+
+    if (color === 'w') return whiteMatrix[square]
+    return blackMatrix[square]
   }
 
   function onDrop(sourceSquare, targetSquare) {
     var temp = new Chess(game.fen())
-    console.log("temp is " + temp.fen())
     var prevGameStatesCopy = prevGameStates
     prevGameStatesCopy.push(temp.fen())
     setPrevGameStates(prevGameStatesCopy)
-    console.log(prevGameStates)
     const gameCopy = { ...game };
     const move = gameCopy.move({
       from: sourceSquare,
@@ -310,12 +296,22 @@ BKing: Encourage castling, discourage moving before castling, discourage moving 
       promotion: 'q' // always promote to a queen for example simplicity
     });
     setGame(gameCopy);
+    // safeGameMutate((game) => {
+    //   game.move({
+    //     from: sourceSquare,
+    //     to: targetSquare,
+    //     promotion: 'q' // always promote to a queen for example simplicity
+    //   })
+    // })
     
     // illegal move
     if (move === null) return false;
-
+    setMoveSquares({
+      [sourceSquare]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' },
+      [targetSquare]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' }
+    });
     // store timeout so it can be cleared on undo/reset so computer doesn't execute move
-    const newTimeout = setTimeout(makeMove, 300);
+    const newTimeout = setTimeout(makeMove(), 300);
     setCurrentTimeout(newTimeout);
     return true;
   }
@@ -357,33 +353,6 @@ BKing: Encourage castling, discourage moving before castling, discourage moving 
 
   function onSquareClick(square) {
     setRightClickedSquares({});
-
-    function resetFirstMove(square) {
-      setMoveFrom(square);
-      getMoveOptions(square);
-    }
-
-    if(!moveFrom) {
-      resetFirstMove(square);
-      return;
-    }
-
-    const gameCopy = { ...game };
-    const move = gameCopy.move({
-      from: moveFrom,
-      to: square,
-      promotion: 'q'
-    });
-    setGame(gameCopy);
-    
-    if(move === null){
-      resetFirstMove(square);
-      return;
-    }
-
-    setTimeout(makeMove, 500);
-    setMoveFrom('')
-    setOptionSquares({});
   }
 
   function onSquareRightClick(square) {
