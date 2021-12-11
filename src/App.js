@@ -56,12 +56,11 @@ export default function App({ boardWidth }) {
       }
       return;
     }
-
-    safeGameMutate((game) => {
-      console.log("MOVED")
-      game.move(possibleMoves[bestMove(possibleMoves, game.fen())]);
-    });
-    console.log(game.turn())
+    console.log(game.board())
+    game.move(possibleMoves[bestMove(possibleMoves, game.fen())]);
+    // safeGameMutate((game) => {
+      // game.move(possibleMoves[bestMove(possibleMoves, game.fen())]);
+    // });
   }
 
   function bestMove(possibleMoves, fen){
@@ -75,7 +74,6 @@ export default function App({ boardWidth }) {
     }
     console.log(possibleMoves)
     console.log(evaluations)
-    console.log(nextBoard)
     var max = 1000;
     if (color === 'black'){
       max *= -1
@@ -287,7 +285,6 @@ export default function App({ boardWidth }) {
     var prevGameStatesCopy = prevGameStates
     prevGameStatesCopy.push(temp.fen())
     setPrevGameStates(prevGameStatesCopy)
-    console.log(prevGameStates)
     const gameCopy = { ...game };
     const move = gameCopy.move({
       from: sourceSquare,
@@ -393,10 +390,8 @@ export default function App({ boardWidth }) {
       <button
         className="rc-button"
         onClick={() => {
-          safeGameMutate((game) => {
-            game.reset();
-            console.log("Resetted game")
-          });
+          game.reset()
+          console.log("Game Resetted")
           const start = new Chess()
           var states = [start]
           setPrevGameStates(states)
@@ -438,9 +433,7 @@ export default function App({ boardWidth }) {
       <button
         className="rc-button"
         onClick={() => {
-          safeGameMutate((game) => {
-            game.reset();
-          });
+          game.reset();
           chessboardRef.current.clearPremoves();
           clearTimeout(currentTimeout);
           setBoardOrientation((currentOrientation) => (currentOrientation === 'black' ? 'white' : 'black'));
