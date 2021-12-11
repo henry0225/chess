@@ -32,69 +32,115 @@ export default function App({ boardWidth }) {
 
   // game logic
   var [color, setColor] = useState('white')
-  var [stateOfGame, setStateOfGame] = useState('In Game')
+  var [engineColor, setEngineColor] = useState('black')
+  var [stateOfGame, setStateOfGame] = useState('')
 
   const tempGame = new Chess();
   var [prevGameStates, setPrevGameStates] = useState([tempGame.fen()]);  // undo thing
 
-  // magic setGame
-  function safeGameMutate(modify) {
-    setGame((g) => {
-      const update = { ...g };
-      modify(update);
-      return update;
-    });
-  }
+  var [currentEval, setEval] = useState();
 
   function makeMove(){
     const possibleMoves = game.moves();
-    if (game.game_over() || game.in_draw() || possibleMoves.length === 0) {
-      if(game.game_over()){
-        setStateOfGame('Game Over')
-      }else{
-        setStateOfGame('Draw')
+    if (game.game_over() || possibleMoves.length === 0) {
+      if(game.in_checkmate()){
+        if(game.turn() === 'b'){
+          setStateOfGame('White wins by checkmate')
+        }else{
+        setStateOfGame('Black wins by checkmate')
+        }
+      }
+
+      if(game.in_draw()){
+        if(game.insufficient_material()){
+          setStateOfGame('Game over - draw by insufficient material')
+        }
+        setStateOfGame('Game over - draw by 50 move rule')
+      }
+
+      if(game.in_stalemate()){
+        setStateOfGame('Draw by stalemate')
+      }
+
+      if(game.in_threefold_repetition()){
+        setStateOfGame('Draw by reptition')
       }
       return;
     }
-    console.log(game.board())
-    game.move(possibleMoves[bestMove(possibleMoves, game.fen())]);
-    // safeGameMutate((game) => {
-      // game.move(possibleMoves[bestMove(possibleMoves, game.fen())]);
-    // });
+    game.move(possibleMoves[f(game, 1, 3, engineColor)]);
   }
-
-  function bestMove(possibleMoves, fen){
-    var nextBoard = [];
-    var evaluations = [];
-    for (let i = 0; i < possibleMoves.length; i++){
-      const gameCopy = new Chess(fen);
-      gameCopy.move(possibleMoves[i]);
-      evaluations[i] = evaluation(gameCopy);
-      nextBoard[i] = (gameCopy)
+  // eval of current board at targetdepth
+  const f = (game, depth, targetDepth, color) => {
+    if (depth == targetDepth) {
+      return evaluation(game)
     }
-    console.log(possibleMoves)
-    console.log(evaluations)
-    var max = 1000;
-    if (color === 'black'){
-      max *= -1
-      // todo: evil bit hacking thing that does the same thing except looks 10x cooler
-    }
-    
-    var maxIndex = 0;
-    for(let k = 0; k < evaluations.length; k++){
-      if(evaluations[k] <= max){
-        max = evaluations[k]
-        maxIndex = k
+ 
+    const possibleMoves = game.moves()
+ 
+    // ASSUME WE ARE Black (African American)
+    let bestEval
+    let index = -1
+ 
+    for (let i = 0; i < possibleMoves.length; i++) {
+      let s = possibleMoves[i]
+      const gameCopy = new Chess(game.fen())
+      gameCopy.move(s)
+      if (depth == 1) {
+        const res = f(gameCopy, depth + 1, targetDepth, color)
+        if (bestEval == undefined || bestEval == null) bestEval = res
+        if(color === 'black'){
+          if (bestEval >= res) {
+            bestEval = res
+            index = i
+          }
+        }else if(color === 'white'){
+          if(bestEval <= res){
+            bestEval = res
+            index = i
+          }
+        }
+      }
+      if (depth % 2 == 0) {
+        const res = f(gameCopy, depth + 1, targetDepth, color)
+        if (bestEval == undefined || bestEval == null) bestEval = res
+        else if(color === 'black'){
+          bestEval = Math.max(bestEval, res)
+        }else if(color === 'white'){
+          bestEval = Math.min(bestEval, res)
+        }
+      }
+      else {
+        const res = f(gameCopy, depth + 1, targetDepth, color)
+        if (bestEval == undefined || bestEval == null) bestEval = res
+        else if(color === 'black'){
+          bestEval = Math.min(bestEval, res)
+        }else if(color === 'white'){
+          bestEval = Math.max(bestEval, res)
+        }
       }
     }
-    console.log("Going to play move " + possibleMoves[maxIndex] + " that gives value " + max)
-    return maxIndex;
+    if (depth == 1) {
+      setEval(bestEval)
+      return index
+    }
+    return bestEval
   }
-
+  
   function evaluation(game){
     //check player color and begin scanning board
     //keep count of each color's "score" by checking with piece-value matrices
     //add up and find an equation to represent the board as a number
+    if(game.in_checkmate()){
+      if(game.turn() === 'w'){
+        return -10000;
+      }else{
+        return 10000
+      }
+    }
+
+    if(game.in_draw()){
+      return 0;
+    }
     var squares = [
       "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", 
       "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", 
@@ -110,9 +156,9 @@ export default function App({ boardWidth }) {
       if(game.get(squares[i]) != null){
         if(game.get(squares[i]).type === "p"){
           if(game.get(squares[i]).color === "w"){
-            white += pawn(i, "w")
+            white += pawn(i, 'w')
             }else{
-            black += pawn(i, "b")
+            black += pawn(i, 'b')
           }
         }
 
@@ -157,19 +203,19 @@ export default function App({ boardWidth }) {
         }
       }
     }
-    return white - black;
+    return ((white - black) / 7).toFixed(2);
   }
 
   function knight(square){
     let matrix = 
-    [23, 25, 26, 26, 26, 26, 25, 23,
-    25, 32, 33, 34, 34, 33, 32, 25,
-    27, 37, 38, 38, 38, 38, 37, 27,
-    29, 33, 35, 37, 37, 35, 33, 29,
-    30, 33, 37, 37, 37, 37, 33, 30,
-    35, 37, 38, 38, 38, 38, 37, 35,
-    25, 32, 33, 34, 34, 33, 32, 25,
-    23, 25, 26, 26, 26, 26, 25, 23]
+    [25, 30, 27, 27, 27, 27, 30, 25,
+    27, 30, 30, 31, 31, 30, 30, 27,
+    28, 32, 33, 33, 33, 33, 32, 28,
+    29, 33, 33, 34, 34, 33, 33, 29,
+    29, 33, 33, 34, 34, 33, 33, 29,
+    28, 32, 33, 33, 33, 33, 32, 28,
+    27, 30, 30, 31, 31, 30, 30, 27,
+    25, 30, 27, 27, 27, 27, 30, 25]
 
     return matrix[square];
   }
@@ -177,22 +223,22 @@ export default function App({ boardWidth }) {
   function pawn(square, color){
     let whiteMatrix = 
     [0, 0, 0, 0, 0, 0, 0, 0,
-    24, 26, 27, 29, 29, 27, 26, 24,
-    15, 17, 18, 20, 20, 18, 17, 15,
-    13, 14, 15, 17, 17, 15, 14, 13,
-    12, 13, 14, 16, 16, 14, 13, 12,
-    10, 12, 13, 14, 14, 13, 12, 10,
+    19, 20, 21, 22, 22, 21, 20, 19,
+    15, 15, 17, 18, 18, 17, 15, 15,
+    13, 13, 14, 15, 15, 14, 13, 13,
+    12, 12, 13, 14, 14, 13, 12, 12,
+    11, 11, 12, 12, 12, 12, 11, 11,
     10, 10, 10, 10, 10, 10, 10, 10,
     0, 0, 0, 0, 0, 0, 0, 0]
     
     let blackMatrix = 
     [0, 0, 0, 0, 0, 0, 0, 0,
     10, 10, 10, 10, 10, 10, 10, 10,
-    10, 12, 13, 14, 14, 13, 12, 10,
-    12, 13, 14, 16, 16, 14, 13, 12,
-    13, 14, 15, 17, 17, 15, 14, 13,
-    15, 17, 18, 20, 20, 18, 17, 15,
-    24, 26, 27, 29, 29, 27, 26, 24,
+    11, 11, 12, 12, 12, 12, 11, 11,
+    12, 12, 13, 14, 14, 13, 12, 12,
+    13, 13, 14, 15, 15, 14, 13, 13,
+    15, 15, 17, 18, 18, 17, 15, 15,
+    19, 20, 21, 22, 22, 21, 20, 19,
     0, 0, 0, 0, 0, 0, 0, 0]
 
     if(color === 'w'){
@@ -204,38 +250,38 @@ export default function App({ boardWidth }) {
   
   function bishop(square){
     let matrix = 
-    [25, 25, 25, 25, 25, 25, 25, 25,
-    25, 30, 30, 30, 30, 30, 30, 25,
-    25, 30, 35, 30, 30, 35, 30, 25,
-    27, 35, 40, 35, 35, 40, 35, 27,
-    27, 35, 40, 35, 35, 40, 35, 27,
-    25, 30, 35, 30, 30, 35, 30, 25,
-    25, 30, 30, 30, 30, 30, 30, 25,
-    25, 25, 25, 25, 25, 25, 25, 25]
+    [28, 29, 32, 32, 32, 32, 29, 28,
+    30, 33, 33, 33, 33, 33, 33, 30,
+    31, 33, 33, 33, 33, 33, 33, 31,
+    32, 34, 34, 34, 34, 34, 34, 32,
+    32, 34, 34, 34, 34, 34, 34, 32,
+    31, 33, 33, 33, 33, 33, 33, 31,
+    30, 33, 33, 33, 33, 33, 33, 30,
+    28, 29, 32, 32, 32, 32, 29, 28]
 
     return matrix[square];
   }
 
   function rook(square, color){
     let whiteMatrix = 
-    [50, 53, 53, 60, 55, 60, 53, 50,
-    53, 55, 55, 57, 57, 55, 55, 53,
-    48, 48, 48, 50, 50, 48, 48, 48,
-    47, 47, 48, 48, 48, 48, 47, 47,
-    47, 47, 48, 48, 48, 48, 47, 47,
-    50, 50, 48, 48, 48, 48, 50, 50,
-    53, 55, 55, 57, 57, 55, 55, 53,
-    55, 57, 57, 60, 60, 57, 57, 55,]
+    [53, 53, 54, 54, 54, 54, 53, 53,
+    52, 52, 53, 53, 53, 53, 52, 52,
+    50, 50, 50, 50, 50, 50, 50, 50,
+    50, 50, 50, 50, 50, 50, 50, 50,
+    50, 50, 50, 50, 50, 50, 50, 50,
+    50, 50, 50, 50, 50, 50, 50, 50,
+    50, 50, 50, 52, 52, 50, 50, 50,
+    50, 50, 50, 53, 52, 53, 50, 50]
 
     let blackMatrix = 
-    [50, 53, 53, 60, 55, 60, 53, 50,
+    [50, 50, 50, 53, 52, 53, 50, 50,
     53, 55, 55, 57, 57, 55, 55, 53,
-    48, 48, 48, 50, 50, 48, 48, 48,
-    47, 47, 48, 48, 48, 48, 47, 47,
-    47, 47, 48, 48, 48, 48, 47, 47,
-    50, 50, 48, 48, 48, 48, 50, 50,
-    53, 55, 55, 57, 57, 55, 55, 53,
-    55, 57, 57, 60, 60, 57, 57, 55,]
+    50, 50, 50, 50, 50, 50, 50, 50,
+    50, 50, 50, 50, 50, 50, 50, 50,
+    50, 50, 50, 50, 50, 50, 50, 50,
+    50, 50, 50, 50, 50, 50, 50, 50,
+    52, 52, 53, 53, 53, 53, 52, 52,
+    53, 53, 54, 54, 54, 54, 53, 53]
 
     if (color === 'w') return whiteMatrix[square]
     return blackMatrix[square];
@@ -243,38 +289,38 @@ export default function App({ boardWidth }) {
 
   function queen(square){
     let matrix = 
-    [90, 92, 95, 97, 97, 95, 92, 90,
-    92, 95, 97, 99, 99, 97, 95, 92,
-    95, 97, 99, 99, 99, 99, 97, 95,
-    95, 97, 99, 99, 99, 99, 97, 95,
-    95, 97, 99, 99, 99, 99, 97, 95,
-    95, 97, 99, 99, 99, 99, 97, 95,
-    92, 95, 97, 99, 99, 97, 95, 92,
-    90, 92, 95, 97, 97, 95, 92, 90]
+    [90, 90, 90, 90, 90, 90, 90, 90,
+    90, 91, 91, 91, 91, 91, 91, 90,
+    91, 92, 92, 92, 92, 92, 92, 91,
+    92, 92, 92, 93, 93, 92, 92, 92,
+    92, 92, 92, 93, 93, 92, 92, 92,
+    91, 92, 92, 92, 92, 92, 92, 91,
+    90, 91, 91, 91, 91, 91, 91, 90,
+    90, 90, 90, 90, 90, 90, 90, 90]
 
     return matrix[square]
   }
 
   function king(square, color){
     let blackMatrix = 
-    [16, 20, -10, 10, -10, 20, 18, 16,
-    -5, -5, -5, -5, -5, -5, -5, -5,
-    -5, -5, -5, -5, -5, -5, -5, -5,
-    -5, -5, -5, -5, -5, -5, -5, -5,
-    -5, -5, -5, -5, -5, -5, -5, -5,
-    -5, -5, -5, -5, -5, -5, -5, -5,
-    -5, -5, -5, -5, -5, -5, -5, -5,
-    -5, -5, -5, -5, -5, -5, -5, -5]
+    [1, 2, 3, -1, -1, -1, 3, 2,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1]
 
     let whiteMatrix = 
-    [-5, -5, -5, -5, -5, -5, -5, -5,
-    -5, -5, -5, -5, -5, -5, -5, -5,
-    -5, -5, -5, -5, -5, -5, -5, -5,
-    -5, -5, -5, -5, -5, -5, -5, -5,
-    -5, -5, -5, -5, -5, -5, -5, -5,
-    -5, -5, -5, -5, -5, -5, -5, -5,
-    -5, -5, -5, -5, -5, -5, -5, -5,
-    16, 18, 20, -10, 10, -10, 20, 16]
+    [-1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    1, 2, 3, -1, -1, -1, 3, 2]
 
     if (color === 'w') return whiteMatrix[square]
     return blackMatrix[square]
@@ -306,6 +352,7 @@ export default function App({ boardWidth }) {
       [sourceSquare]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' },
       [targetSquare]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' }
     });
+    setEval(f(game, 1, 3, color))
     // store timeout so it can be cleared on undo/reset so computer doesn't execute move
     const newTimeout = setTimeout(makeMove(), 300);
     setCurrentTimeout(newTimeout);
@@ -442,8 +489,10 @@ export default function App({ boardWidth }) {
           }
           if(color === 'white'){
             setColor('black')
+            setEngineColor('white')
           }else{
             setColor('white')
+            setEngineColor('black')
           }
         }}
       >
@@ -460,7 +509,8 @@ export default function App({ boardWidth }) {
       </button>
         <h1>
         {color}
-
+        {" "}
+        {currentEval}
         </h1>
         <h2>
         {stateOfGame}
