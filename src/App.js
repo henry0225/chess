@@ -56,9 +56,7 @@ export default function App({ boardWidth }) {
       }
       return;
     }
-    const gameCopy = new Chess(game.fen());
-    gameCopy.load("RN5n/6p1/1pKR2P1/1P2pb2/2pq4/5k2/7r/4r3 w - - 0 1");
-    const possibleCopyMoves = gameCopy.moves();
+
     safeGameMutate((game) => {
       console.log("MOVED")
       game.move(possibleMoves[bestMove(possibleMoves, game.fen())]);
@@ -289,6 +287,7 @@ export default function App({ boardWidth }) {
     var prevGameStatesCopy = prevGameStates
     prevGameStatesCopy.push(temp.fen())
     setPrevGameStates(prevGameStatesCopy)
+    console.log(prevGameStates)
     const gameCopy = { ...game };
     const move = gameCopy.move({
       from: sourceSquare,
@@ -398,6 +397,9 @@ export default function App({ boardWidth }) {
             game.reset();
             console.log("Resetted game")
           });
+          const start = new Chess()
+          var states = [start]
+          setPrevGameStates(states)
           // clear premove queue
           chessboardRef.current.clearPremoves();
           // stop any current timeouts
@@ -414,7 +416,10 @@ export default function App({ boardWidth }) {
         onClick={() => {
           // undo twice to undo computer move too
           console.log(prevGameStates)
-          game.load(prevGameStates[prevGameStates.length - 2]);
+          
+          game.load(prevGameStates[prevGameStates.length - 1]);
+          var copy = prevGameStates.splice(prevGameStates.length - 2, 1)
+          setPrevGameStates(copy)
           console.log("Attempted undo")
           // clear premove queue
 
