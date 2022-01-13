@@ -34,14 +34,21 @@ export default function App({ boardWidth }) {
   var [color, setColor] = useState('white')
   var [engineColor, setEngineColor] = useState('black')
   var [stateOfGame, setStateOfGame] = useState('')
+  var nodeNum = 0;
 
   const tempGame = new Chess();
   var [prevGameStates, setPrevGameStates] = useState([tempGame.fen()]);  // undo thing
 
   var [currentEval, setEval] = useState();
-
-  function makeMove(){
+  var count = 0;
+  function makeMove(colorToMove){
+    count = 0;
+    if(game.turn() === 'w' && colorToMove === 'black'){
+      colorToMove = 'white'
+    }
+    console.log("Making move for " + colorToMove)
     const possibleMoves = game.moves();
+    console.log(possibleMoves)
     if (game.game_over() || possibleMoves.length === 0) {
       if(game.in_checkmate()){
         if(game.turn() === 'b'){
@@ -67,9 +74,12 @@ export default function App({ boardWidth }) {
       }
       return;
     }
-    game.move(possibleMoves[f(game, 1, 3, engineColor)]);
+    game.move(possibleMoves[f(game, 1, 4, colorToMove)]);
+    console.log(nodeNum)
   }
   // eval of current board at targetdepth
+  
+  
   const f = (game, depth, targetDepth, color) => {
     if (depth == targetDepth) {
       return evaluation(game)
@@ -80,56 +90,74 @@ export default function App({ boardWidth }) {
     // ASSUME WE ARE Black (African American)
     let bestEval
     let index = -1
- 
-    for (let i = 0; i < possibleMoves.length; i++) {
-      let s = possibleMoves[i]
-      const gameCopy = new Chess(game.fen())
-      gameCopy.move(s)
+    if(color === 'black'){
+      for (let i = 0; i < possibleMoves.length; i++) {
+        let s = possibleMoves[i]
+        const gameCopy = new Chess(game.fen())
+        gameCopy.move(s)
+        if (depth == 1) {
+          const res = f(gameCopy, depth + 1, targetDepth, color)
+          if (bestEval == undefined || bestEval == null) bestEval = res
+            if (bestEval >= res) {
+              bestEval = res
+              index = i
+            }
+          }
+        if (depth % 2 == 0) {
+          const res = f(gameCopy, depth + 1, targetDepth, color)
+          if (bestEval == undefined || bestEval == null) bestEval = res
+            bestEval = Math.max(bestEval, res)
+        }else {
+          const res = f(gameCopy, depth + 1, targetDepth, color)
+          if (bestEval == undefined || bestEval == null) bestEval = res
+            bestEval = Math.min(bestEval, res)
+        }
+      }
       if (depth == 1) {
-        const res = f(gameCopy, depth + 1, targetDepth, color)
-        if (bestEval == undefined || bestEval == null) bestEval = res
-        if(color === 'black'){
-          if (bestEval >= res) {
-            bestEval = res
-            index = i
+        setEval(bestEval)
+        return index
+      }
+
+      return bestEval
+    }else{
+      for (let i = 0; i < possibleMoves.length; i++) {
+        let s = possibleMoves[i]
+        const gameCopy = new Chess(game.fen())
+        gameCopy.move(s)
+        if (depth == 1) {
+          const res = f(gameCopy, depth + 1, targetDepth, color)
+          if (bestEval == undefined || bestEval == null) bestEval = res
+            if (bestEval <= res) {
+              bestEval = res
+              index = i
+            }
           }
-        }else if(color === 'white'){
-          if(bestEval <= res){
-            bestEval = res
-            index = i
+        if (depth % 2 == 0) {
+          const res = f(gameCopy, depth + 1, targetDepth, color)
+          if (bestEval == undefined || bestEval == null) bestEval = res
+            bestEval = Math.min(bestEval, res)
+        }else {
+          const res = f(gameCopy, depth + 1, targetDepth, color)
+          if (bestEval == undefined || bestEval == null) bestEval = res
+            bestEval = Math.max(bestEval, res)
           }
-        }
       }
-      if (depth % 2 == 0) {
-        const res = f(gameCopy, depth + 1, targetDepth, color)
-        if (bestEval == undefined || bestEval == null) bestEval = res
-        else if(color === 'black'){
-          bestEval = Math.max(bestEval, res)
-        }else if(color === 'white'){
-          bestEval = Math.min(bestEval, res)
-        }
+      if (depth == 1) {
+        setEval(bestEval)
+        return index
       }
-      else {
-        const res = f(gameCopy, depth + 1, targetDepth, color)
-        if (bestEval == undefined || bestEval == null) bestEval = res
-        else if(color === 'black'){
-          bestEval = Math.min(bestEval, res)
-        }else if(color === 'white'){
-          bestEval = Math.max(bestEval, res)
-        }
-      }
+
+      return bestEval
     }
-    if (depth == 1) {
-      setEval(bestEval)
-      return index
-    }
-    return bestEval
   }
+
+
   
   function evaluation(game){
     //check player color and begin scanning board
     //keep count of each color's "score" by checking with piece-value matrices
     //add up and find an equation to represent the board as a number
+    nodeNum++
     if(game.in_checkmate()){
       if(game.turn() === 'w'){
         return -10000;
@@ -203,6 +231,8 @@ export default function App({ boardWidth }) {
         }
       }
     }
+    count++
+    //console.log(count)
     return ((white - black) / 7).toFixed(2);
   }
 
@@ -223,22 +253,22 @@ export default function App({ boardWidth }) {
   function pawn(square, color){
     let whiteMatrix = 
     [0, 0, 0, 0, 0, 0, 0, 0,
-    19, 20, 21, 22, 22, 21, 20, 19,
-    15, 15, 17, 18, 18, 17, 15, 15,
-    13, 13, 14, 15, 15, 14, 13, 13,
-    12, 12, 13, 14, 14, 13, 12, 12,
-    11, 11, 12, 12, 12, 12, 11, 11,
+    18, 18, 18, 19, 19, 18, 18, 18,
+    13, 14, 14, 15, 15, 14, 14, 14,
+    12, 13, 13, 14, 14, 13, 13, 13,
+    11, 12, 12, 13, 13, 12, 12, 12,
+    11, 11, 11, 11, 11, 11, 11, 11,
     10, 10, 10, 10, 10, 10, 10, 10,
     0, 0, 0, 0, 0, 0, 0, 0]
     
     let blackMatrix = 
     [0, 0, 0, 0, 0, 0, 0, 0,
     10, 10, 10, 10, 10, 10, 10, 10,
-    11, 11, 12, 12, 12, 12, 11, 11,
-    12, 12, 13, 14, 14, 13, 12, 12,
-    13, 13, 14, 15, 15, 14, 13, 13,
-    15, 15, 17, 18, 18, 17, 15, 15,
-    19, 20, 21, 22, 22, 21, 20, 19,
+    11, 11, 11, 11, 11, 11, 11, 11,
+    11, 12, 12, 13, 13, 12, 12, 12,
+    12, 13, 13, 14, 14, 13, 13, 13,
+    13, 14, 14, 15, 15, 14, 14, 14,
+    18, 18, 18, 19, 19, 18, 18, 18,
     0, 0, 0, 0, 0, 0, 0, 0]
 
     if(color === 'w'){
@@ -291,10 +321,10 @@ export default function App({ boardWidth }) {
     let matrix = 
     [90, 90, 90, 90, 90, 90, 90, 90,
     90, 91, 91, 91, 91, 91, 91, 90,
-    91, 92, 92, 92, 92, 92, 92, 91,
-    92, 92, 92, 93, 93, 92, 92, 92,
-    92, 92, 92, 93, 93, 92, 92, 92,
-    91, 92, 92, 92, 92, 92, 92, 91,
+    91, 91, 91, 91, 91, 91, 91, 91,
+    91, 91, 91, 92, 92, 91, 91, 91,
+    91, 91, 91, 92, 92, 91, 91, 91,
+    91, 91, 91, 91, 91, 91, 91, 91,
     90, 91, 91, 91, 91, 91, 91, 90,
     90, 90, 90, 90, 90, 90, 90, 90]
 
@@ -352,9 +382,8 @@ export default function App({ boardWidth }) {
       [sourceSquare]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' },
       [targetSquare]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' }
     });
-    setEval(f(game, 1, 3, color))
     // store timeout so it can be cleared on undo/reset so computer doesn't execute move
-    const newTimeout = setTimeout(makeMove(), 300);
+    const newTimeout = setTimeout(makeMove(engineColor), 0);
     setCurrentTimeout(newTimeout);
     return true;
   }
@@ -408,6 +437,7 @@ export default function App({ boardWidth }) {
           : { backgroundColor: colour }
     });
   }
+
   return (
     <div>
       <Chessboard
@@ -434,6 +464,8 @@ export default function App({ boardWidth }) {
         }}
         ref={chessboardRef}
       />
+
+
       <button
         className="rc-button"
         onClick={() => {
@@ -480,20 +512,34 @@ export default function App({ boardWidth }) {
       <button
         className="rc-button"
         onClick={() => {
-          game.reset();
+          
+          console.log("Game Resetted")
+          const start = new Chess()
+          var states = [start]
+          setPrevGameStates(states)
+          // clear premove queue
           chessboardRef.current.clearPremoves();
+          // stop any current timeouts
           clearTimeout(currentTimeout);
+          
           setBoardOrientation((currentOrientation) => (currentOrientation === 'black' ? 'white' : 'black'));
-          if (boardOrientation === 'white' || boardOrientation === null || boardOrientation === undefined){
-            makeMove();
-          }
+          game.reset();
           if(color === 'white'){
+            console.log("Attempted Color swap")
             setColor('black')
             setEngineColor('white')
           }else{
             setColor('white')
             setEngineColor('black')
           }
+          if (color === 'white'){
+            console.log("Move Attempted")
+            makeMove(engineColor);
+          }
+          
+          // if (boardOrientation === 'white' || boardOrientation === null || boardOrientation === undefined){
+          //   makeMove();
+          // }
         }}
       >
         change color

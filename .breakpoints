@@ -1,3 +1,12 @@
 {
-  "files": {}
+  "files": {
+    "src/App.js": [
+      {
+        "id": "bb2ef0dc-1070-4632-8313-ee278fbfc3fb",
+        "line": 1,
+        "version": 21734,
+        "index": 0
+      }
+    ]
+  }
 }
