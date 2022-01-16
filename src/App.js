@@ -47,7 +47,16 @@ export default function App({ boardWidth }) {
     if (game.turn() === 'w' && colorToMove === 'black') {
       colorToMove = 'white'
     }
-    console.log("Making move for " + colorToMove)
+    //testing
+    var testingGame = new Chess("3B4/1p2PrP1/6n1/2k2p2/Q5P1/P5p1/b1Pp4/2K5 w - - 0 1")
+    console.log("testing " + evaluation(testingGame))
+
+
+
+
+
+
+    //testing
     const possibleMoves = game.moves();
     //console.log(possibleMoves)
     if (game.game_over() || possibleMoves.length === 0) {
@@ -103,9 +112,10 @@ export default function App({ boardWidth }) {
       }
 
       if (evaluated > alpha) {
+        console.log("pruned " + bestMove + " at depth " + depth)
         bestMove = moves[i]
         bestEval = evaluated;
-        console.log("pruned and best move is " + bestMove)
+        
         alpha = evaluated;
 
       }
@@ -249,16 +259,19 @@ function moveOrdering(moves) {
       }
     }
     count++
-    score = ((white - black) / 7).toFixed(2);
+    score = (white - black) / 8;
     if (game.turn() === 'b') {
       if(quiescenceChecking(game.moves()) === true){
-      score += 3
+      console.log("quiescenceChecked")
+      score -= 1
       }
       return -score;
     }
     if(quiescenceChecking(game.moves()) === true){
-      score -= 3
+      console.log("quiscenceChecked")
+      score += 1
     }
+    console.log(score)
     return score;
   }
 
@@ -278,7 +291,7 @@ function moveOrdering(moves) {
 
   function pawn(square, color) {
     let whiteMatrix =
-      [0, 0, 0, 0, 0, 0, 0, 0,
+      [90, 90, 90, 90, 90, 90, 90, 90,
         18, 18, 18, 19, 19, 18, 18, 18,
         13, 14, 14, 15, 15, 14, 14, 14,
         12, 13, 13, 14, 14, 13, 13, 13,
