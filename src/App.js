@@ -113,16 +113,14 @@ export default function App({ boardWidth }) {
       if (evaluated > alpha){
         alpha = evaluated
         bestMove = moves[i]
-        bestEval = evaluated
+
+        if (distanceFromRoot === 0) {
+          bestEval = evaluated
+        }
       }
     }
     //console.log("Depth: " + depth + " Distance From Root: " + distanceFromRoot)
-    if (distanceFromRoot === 0) {
-      if (engineColor === 'black') {
-        bestEval *= -1;
-      }
-      //setEval(bestEval)
-      console.log("returned " + bestMove)
+    if(distanceFromRoot === 0){
       return bestMove;
     }
     return alpha;
