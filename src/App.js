@@ -1,5 +1,4 @@
-// ENGINE NAME:
-// OPERATION THANOS
+// never underestimate the power of the scouts code
 
 
 /*
@@ -34,33 +33,28 @@ export default function App({ boardWidth }) {
   var [color, setColor] = useState('white')
   var [engineColor, setEngineColor] = useState('black')
   var [stateOfGame, setStateOfGame] = useState('')
+  var [gameState, setGameState] = useState('')
   var nodeNum = 0;
-
+  var [pieces, setPieces] = useState([56, 57, 58, 59, 60, 61, 62, 63, 48, 49, 50, 51, 52, 53, 54, 55, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);//R, N, B, Q, K, B, N, R, P1, P2, P3, P4, P5, P6, P7, P8, p1, r, n, b, q, k, b, n, r, p2, p3, p4, p5, p6, p7, p8
   const tempGame = new Chess();
   var [prevGameStates, setPrevGameStates] = useState([tempGame.fen()]);  // undo thing
 
   var [currentEval, setEval] = useState();
   var [searchDepth, setSearchDepth] = useState(3);
   var count = 0;
+
   function makeMove(colorToMove) {
+    console.log("new turn")
     count = 0;
     if (game.turn() === 'w' && colorToMove === 'black') {
       colorToMove = 'white'
     }
-    //testing
-    var testingGame = new Chess("3B4/1p2PrP1/6n1/2k2p2/Q5P1/P5p1/b1Pp4/2K5 w - - 0 1")
-    console.log("testing " + evaluation(testingGame))
-
-
-
-
-
-
-    //testing
+    console.log(squareToInt("h8"));
+    console.log(squareToInt("a1"));
     const possibleMoves = game.moves();
     //console.log(possibleMoves)
     if (game.game_over() || possibleMoves.length === 0) {
-      if (game.in_checkmate()) {
+      if(game.in_checkmate()) {
         if (game.turn() === 'b') {
           setStateOfGame('White wins by checkmate')
         } else {
@@ -86,6 +80,7 @@ export default function App({ boardWidth }) {
     }
     console.log(searchDepth)
     game.move(minimax(game, searchDepth, 0, -10000, 10000));
+    setEval(evaluation(game));
     console.log(nodeNum)
   }
   // eval of current board at targetdepth
@@ -93,31 +88,32 @@ export default function App({ boardWidth }) {
   function minimax(game, depth, distanceFromRoot, alpha, beta) {
 
     if (depth === 0) {
-      var evaluated = evaluation(game);
-      return evaluated;
+      var value = evaluation(game);
+      return value;
     }
     var moves = game.moves();
     //console.log(moves)
     moveOrdering(moves);
     //console.log(moves)
     var bestMove = null;
-    var bestEval = 0;
+    var bestEval = null;
+    
     for (let i = 0; i < moves.length; i++) {
       var gameCopy = new Chess(game.fen())
       gameCopy.move(moves[i])
       var evaluated = -minimax(gameCopy, depth - 1, distanceFromRoot + 1, -beta, -alpha);
 
       if (evaluated >= beta) {
+        console.log("pruned")
         return beta;
+      }else{
+        console.log("didn't prune")
       }
 
-      if (evaluated > alpha) {
-        console.log("pruned " + bestMove + " at depth " + depth)
+      if (evaluated > alpha){
+        alpha = evaluated
         bestMove = moves[i]
-        bestEval = evaluated;
-        
-        alpha = evaluated;
-
+        bestEval = evaluated
       }
     }
     //console.log("Depth: " + depth + " Distance From Root: " + distanceFromRoot)
@@ -125,7 +121,7 @@ export default function App({ boardWidth }) {
       if (engineColor === 'black') {
         bestEval *= -1;
       }
-      setEval(bestEval)
+      //setEval(bestEval)
       console.log("returned " + bestMove)
       return bestMove;
     }
@@ -143,18 +139,18 @@ export default function App({ boardWidth }) {
     return false;
   }
 
-function moveOrdering(moves) {
-    var counter = 0;
-    for (let i = 0; i < moves.length; i++){
-      var captures = moves[i].includes("x")
-      var checks = moves[i].includes("+")
-      if (captures === true || checks === true){
-        var temp = moves[counter];
-        moves[counter] = moves[i];
-        moves[i] = temp;
-        counter++
+  function moveOrdering(moves) {
+      var counter = 0;
+      for (let i = 0; i < moves.length; i++){
+        var captures = moves[i].includes("x")
+        var checks = moves[i].includes("+")
+        if (captures === true || checks === true){
+          var temp = moves[counter];
+          moves[counter] = moves[i];
+          moves[i] = temp;
+          counter++
+        }
       }
-    }
   }
 
   function countPcs(temporaryGame){
@@ -177,6 +173,50 @@ function moveOrdering(moves) {
     console.log(counter)
     return counter;
   }
+
+  function moveArray(move, color, game){
+    var temp = move;
+    if(move === "O-O"){
+      //switch king and rook squares for the respective color
+    }else if(move === "O-O-O"){
+
+    }
+    if(move.includes("+") === true || move.includes("#") === true){
+      move = temp.substring(0, temp.length - 2)
+    }
+    var square = squareToInt(move.substring(move.length - 2))
+
+
+  }
+
+  function squareToInt(square){
+    var number = 0;
+    if(square.substring(0, 1) === 'b'){
+      number += 1;
+    } 
+    else if(square.substring(0, 1) === 'c'){
+      number += 2;
+    }
+    else if(square.substring(0, 1) === 'd'){
+      number += 3;
+    }
+    else if(square.substring(0, 1) === 'e'){
+      number += 4;
+    }
+    else if(square.substring(0, 1) === 'f'){
+      number += 5;
+    }
+    else if(square.substring(0, 1) === 'g'){
+      number += 6;
+    }
+    else if(square.substring(0, 1) === 'h'){
+      number += 7;
+    }
+    number += 8 * (8 - parseInt(square.substring(1)))
+    return number;
+  }
+
+
   function evaluation(game) {
     //check player color and begin scanning board
     //keep count of each color's "score" by checking with piece-value matrices
@@ -262,13 +302,11 @@ function moveOrdering(moves) {
     score = (white - black) / 8;
     if (game.turn() === 'b') {
       if(quiescenceChecking(game.moves()) === true){
-      console.log("quiescenceChecked")
       score -= 1
       }
       return -score;
     }
     if(quiescenceChecking(game.moves()) === true){
-      console.log("quiscenceChecked")
       score += 1
     }
     console.log(score)
@@ -279,10 +317,10 @@ function moveOrdering(moves) {
     let matrix =
       [25, 30, 27, 27, 27, 27, 30, 25,
         27, 30, 30, 31, 31, 30, 30, 27,
-        28, 32, 33, 33, 33, 33, 32, 28,
-        29, 33, 33, 34, 34, 33, 33, 29,
-        29, 33, 33, 34, 34, 33, 33, 29,
-        28, 32, 33, 33, 33, 33, 32, 28,
+        28, 32, 32, 33, 33, 32, 32, 28,
+        29, 33, 33, 33, 33, 33, 33, 29,
+        29, 33, 33, 33, 33, 33, 33, 29,
+        28, 32, 32, 33, 33, 32, 32, 28,
         27, 30, 30, 31, 31, 30, 30, 27,
         25, 30, 27, 27, 27, 27, 30, 25]
 
@@ -632,6 +670,8 @@ function moveOrdering(moves) {
         {color}
         {" "}
         {currentEval}
+        {" "}
+        {"Depth: " + searchDepth}
       </h1>
       <h2>
         {stateOfGame}
