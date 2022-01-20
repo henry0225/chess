@@ -1,18 +1,41 @@
-// never underestimate the power of the scouts code
+// top 7 teemo rules
+// #1 never underestimate the power of the scouts code
+// #2 hut 2 3 4
+// #3 captain teemo on duty
+// #4 size doesn't mean everything
+// #5 yes sir
+// #6 scouting ahead
+// #7 on the way
+// 10 joker rules to live by
+// 1. “The only sensible way to live in this world is without rules.”  ― The Joker
+// 2. “Smile, because it confuses people. Smile, because it’s easier than explaining what is killing you inside.” ― The Joker
+// 3. “What doesn’t kill you, simply makes you stranger!” ― The Joker
+// 4. “April sweet is coming in, let the feast of fools begin!” – The Joker
+// 5. “They need you right now, but when they don’t, they’ll cast you out like a leper!” – The Joker
+// 6. “As you know, madness is like gravity…all it takes is a little push.” ― The Joker
+// 7. “Let’s put a smile on that face!” – The Joker
+// 8. “We stopped checking for monsters under our bed, when we realized they were inside us.” – The Joker
+// 9. “If you’re good at something, never do it for free.” ― The Joker
+// 18. “‎Introduce a little anarchy. Upset the established order, and everything becomes chaos. I’m an agent of chaos…” ― The Joker 
 
+
+// bugs:
+// can't make checkmate move
+// crashes before engine will get checkmated (minimax returns null)
 
 /*
 Future plans:
 Back end:
--Begin working on tree and Nth-depth searching
+-Improve quiescence checking to increase discourage higher piece loss and decrease the discouragement for pawns
 -Look into potential ways to map board onto array in O(1)
--Can implement multiple PST's for different stages of the game, maybe at a certain number of moves we can
-loosen discouragements from edges and whatnot, endgame can make pawns worth more etc.
+endgame can make pawns worth more etc.
+-make engine play checkmate
 Front end:
 -Make the buttons look prettier and display color as well as current game state
--Look into implementing pop-ups for checkmate/stalemate
+
+-column for move order
 */
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Chessboard } from 'react-chessboard';
 import './App.css';
 import Chess from 'chess.js';
@@ -32,10 +55,10 @@ export default function App({ boardWidth }) {
   // game logic
   var [color, setColor] = useState('white')
   var [engineColor, setEngineColor] = useState('black')
-  var [stateOfGame, setStateOfGame] = useState('')
-  var [gameState, setGameState] = useState('')
+  var [stateOfGame, setStateOfGame] = useState('') //in game, checkmate, stalemate
+  var [gameState, setGameState] = useState('') //opening, middlegame, endgame
   var nodeNum = 0;
-  var [pieces, setPieces] = useState([56, 57, 58, 59, 60, 61, 62, 63, 48, 49, 50, 51, 52, 53, 54, 55, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);//R, N, B, Q, K, B, N, R, P1, P2, P3, P4, P5, P6, P7, P8, p1, r, n, b, q, k, b, n, r, p2, p3, p4, p5, p6, p7, p8
+  var [pieces, setPieces] = useState(['a1, b1, c1, d1, e1, f1, g1, h1, a2, b2, c2, d2, e2, f2, g2, h2, a7, b7, c7, d7, e7, f7, g7, h7, a8, b8, c8, d8, e8, f8, g8, h8']);//R, N, B, Q, K, B, N, R, P1, P2, P3, P4, P5, P6, P7, P8, p1, r, n, b, q, k, b, n, r, p2, p3, p4, p5, p6, p7, p8
   const tempGame = new Chess();
   var [prevGameStates, setPrevGameStates] = useState([tempGame.fen()]);  // undo thing
 
@@ -43,14 +66,22 @@ export default function App({ boardWidth }) {
   var [searchDepth, setSearchDepth] = useState(3);
   var count = 0;
 
+  const isFirstRender = useRef(true)
+  const runEffect = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false // toggle flag after first render/mounting
+      return;
+    }
+    makeMove(engineColor)
+  }, [runEffect.current])
+  
   function makeMove(colorToMove) {
     console.log("new turn")
     count = 0;
     if (game.turn() === 'w' && colorToMove === 'black') {
       colorToMove = 'white'
     }
-    console.log(squareToInt("h8"));
-    console.log(squareToInt("a1"));
     const possibleMoves = game.moves();
     //console.log(possibleMoves)
     if (game.game_over() || possibleMoves.length === 0) {
@@ -79,8 +110,10 @@ export default function App({ boardWidth }) {
       return;
     }
     console.log(searchDepth)
-    game.move(minimax(game, searchDepth, 0, -10000, 10000));
-    setEval(evaluation(game));
+    var gameCopy = new Chess(game.fen())
+    gameCopy.move(minimax(gameCopy, searchDepth, 0, -10000, 10000));
+    setGame(gameCopy)
+    setEval(evaluation(gameCopy));
     console.log(nodeNum)
   }
   // eval of current board at targetdepth
@@ -113,14 +146,16 @@ export default function App({ boardWidth }) {
       if (evaluated > alpha){
         alpha = evaluated
         bestMove = moves[i]
-
+        //why tf does this not compile nvm it work!
+        //BIG DICK BIG DICK
         if (distanceFromRoot === 0) {
-          bestEval = evaluated
+          bestEval = evaluated;
         }
       }
     }
     //console.log("Depth: " + depth + " Distance From Root: " + distanceFromRoot)
     if(distanceFromRoot === 0){
+      setEval(-bestEval)
       return bestMove;
     }
     return alpha;
@@ -171,21 +206,7 @@ export default function App({ boardWidth }) {
     console.log(counter)
     return counter;
   }
-
-  function moveArray(move, color, game){
-    var temp = move;
-    if(move === "O-O"){
-      //switch king and rook squares for the respective color
-    }else if(move === "O-O-O"){
-
-    }
-    if(move.includes("+") === true || move.includes("#") === true){
-      move = temp.substring(0, temp.length - 2)
-    }
-    var square = squareToInt(move.substring(move.length - 2))
-
-
-  }
+  
 
   function squareToInt(square){
     var number = 0;
@@ -300,12 +321,12 @@ export default function App({ boardWidth }) {
     score = (white - black) / 8;
     if (game.turn() === 'b') {
       if(quiescenceChecking(game.moves()) === true){
-      score -= 1
+      score -= 0.5
       }
       return -score;
     }
     if(quiescenceChecking(game.moves()) === true){
-      score += 1
+      score += 0.5
     }
     console.log(score)
     return score;
@@ -440,8 +461,12 @@ export default function App({ boardWidth }) {
 
     if(searchDepth === null){
       setSearchDepth(3);
+      setGameState('opening')
+    }else if(countPcs(game) <= 27){
+      setGameState('middlegame')
     }
-    if(countPcs(game) <= 16){
+    if(countPcs(game) <= 14){
+      setGameState('endgame')
       setSearchDepth(5);
     }else{
       setSearchDepth(3);
@@ -494,8 +519,7 @@ export default function App({ boardWidth }) {
     });
     // store timeout so it can be cleared on undo/reset so computer doesn't execute move
 
-    const newTimeout = setTimeout(makeMove(engineColor), 0);
-    setCurrentTimeout(newTimeout);
+    runEffect.current = !runEffect.current
     return true;
   }
 
@@ -589,6 +613,8 @@ export default function App({ boardWidth }) {
           chessboardRef.current.clearPremoves();
           // stop any current timeouts
           clearTimeout(currentTimeout);
+          setGameState('')
+          setStateOfGame('')
           if (boardOrientation === 'black' || boardOrientation === null || boardOrientation === undefined) {
             makeMove();
           }
@@ -664,20 +690,22 @@ export default function App({ boardWidth }) {
       >
         flip board
       </button>
-      <h1>
-        {color}
-        {" "}
-        {currentEval}
-        {" "}
-        {"Depth: " + searchDepth}
-      </h1>
-      <h2>
-        {stateOfGame}
-      </h2>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gridGap: 30 }}>
+        <h1>
+          {color}
+          {" "}
+          {currentEval}
+          {" "}
+          {"Depth: " + searchDepth}
+        </h1>
+        <h2>
+          {stateOfGame}
+        </h2>
 
-      <h3>
-        {game.pgn()}
-      </h3>
+        <h3>
+          {game.pgn()}
+        </h3>
+      </div>
     </div>
   );
 }
