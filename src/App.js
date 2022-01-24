@@ -1,27 +1,7 @@
-// top 7 teemo rules
-// #1 never underestimate the power of the scouts code
-// #2 hut 2 3 4
-// #3 captain teemo on duty
-// #4 size doesn't mean everything
-// #5 yes sir
-// #6 ill scout ahead
-// #7 armed and ready
-// 10 joker rules to live by
-// 1. “The only sensible way to live in this world is without rules.”  ― The Joker
-// 2. “Smile, because it confuses people. Smile, because it’s easier than explaining what is killing you inside.” ― The Joker
-// 3. “What doesn’t kill you, simply makes you stranger!” ― The Joker
-// 4. “April sweet is coming in, let the feast of fools begin!” – The Joker
-// 5. “They need you right now, but when they don’t, they’ll cast you out like a leper!” – The Joker
-// 6. “As you know, madness is like gravity…all it takes is a little push.” ― The Joker
-// 7. “Let’s put a smile on that face!” – The Joker
-// 8. “We stopped checking for monsters under our bed, when we realized they were inside us.” – The Joker
-// 9. “If you’re good at something, never do it for free.” ― The Joker
-// 18. “‎Introduce a little anarchy. Upset the established order, and everything becomes chaos. I’m an agent of chaos…” ― The Joker 
-
-
 // bugs:
 // can't make checkmate move
 // crashes before engine will get checkmated (minimax returns null)
+// can't use game object during minimax (ui bugs during engine turn)
 
 /*
 Future plans:
@@ -30,6 +10,7 @@ Back end:
 -Look into potential ways to map board onto array in O(1)
 endgame can make pawns worth more etc.
 -make engine play checkmate
+-store json in a file
 Front end:
 -Make the buttons look prettier and display color as well as current game state
 
@@ -41,13 +22,13 @@ import {moveOrdering, squareToInt, intToSquare, pieceValue} from './utils.js';
 import {pawn, knight, bishop, rook, queen, king} from './pieceTables.js';
 //import {intToSquare} from './utils.js';
 import './App.css';
+import file from './samples.txt';
 import Chess from 'chess.js';
 
 export default function App({ boardWidth }) {
-  const chessboardRef = useRef(); // magic ref thing
+  const chessboardRef = useRef(); // magic ref thing 
   const [game, setGame] = useState(new Chess());
-  const [currentTimeout, setCurrentTimeout] = useState(undefined);  // delay?
-
+  const [currentTimeout, setCurrentTimeout] = useState(undefined);  //
   // hooks
   const [rightClickedSquares, setRightClickedSquares] = useState({});
   const [moveSquares, setMoveSquares] = useState({});
@@ -65,80 +46,125 @@ export default function App({ boardWidth }) {
   const tempGame = new Chess();
   var [prevGameStates, setPrevGameStates] = useState([tempGame.pgn()]);  // undo thing
 
+  const [text, setText] = useState()
+
   var [currentEval, setEval] = useState();
-  var [searchDepth, setSearchDepth] = useState(4);
+  var [searchDepth, setSearchDepth] = useState(3);
   var count = 0;
 
   const isFirstRender = useRef(true)
   const runEffect = useRef(true)
-  useEffect(async () => {
+  useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false // toggle flag after first render/mounting
       return;
     }
     makeMove(engineColor)
   }, [runEffect.current])
+
+  useEffect(() => {
+    // const fr = new FileReader()
+    // fr.onload = function(e){
+    //   console.log(e.target.result)
+    // }
+    // fr.readAsText(file)
+    fetch(file)
+    .then((data) => data.text())
+    .then((t) => {
+      setText(JSON.parse(t))
+      console.log(JSON.parse(t))
+      })
+    .catch(e => console.error(e))
+
+    // const stuff = { testing : 'testing' };
+    // fetch(file, {
+    //   method:'POST',
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //   },
+    //   body: JSON.stringify(stuff),
+    // })
+    // .then(response => response.json())
+    // .then(stuff => {
+    //   console.log('Success:', stuff)
+    // })
+  }, [])
+
   function testing2(){
     var testGame = new Chess();
-    var testGameCopy = new Chess();
-    testGameCopy.load_pgn(testGame.pgn())
-    var prevEval = 0;
-    var t1 = testGame.move("e4")
-    var curEval = trackingEval(testGameCopy, prevEval, t1, "e4")
-    console.log(curEval)
+    testGame.load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
+    // var testGameCopy = new Chess();
+    // testGameCopy.load_pgn(testGame.pgn())
+    // var prevEval = 0;
+    // var t1 = testGame.move("e4")
+    // var curEval = trackingEval(testGameCopy, prevEval, t1, "e4")
+    // console.log(curEval)
     
-    prevEval = curEval;
-    testGameCopy.load_pgn(testGame.pgn())
-    t1 = testGame.move("d5")
-    curEval = trackingEval(testGameCopy, prevEval, t1, "d5")
-    console.log(curEval)
+    // prevEval = curEval;
+    // testGameCopy.load_pgn(testGame.pgn())
+    // t1 = testGame.move("d5")
+    // curEval = trackingEval(testGameCopy, prevEval, t1, "d5")
+    // console.log(curEval)
 
 
 
-    prevEval = curEval;
-    testGameCopy.load_pgn(testGame.pgn())
-    t1 = testGame.move("exd5")
-    curEval = trackingEval(testGameCopy, prevEval, t1, "exd5")
-    console.log(curEval)
+    // prevEval = curEval;
+    // testGameCopy.load_pgn(testGame.pgn())
+    // t1 = testGame.move("exd5")
+    // curEval = trackingEval(testGameCopy, prevEval, t1, "exd5")
+    // console.log(curEval)
+    testGame.move("d5")
+    console.log(testGame.ascii())
   }
 
+  function makeRandom(){
+    var moves = game.moves()
+    game.move(moves[0])
+  }
   function makeMove(colorToMove) {
-    //testing();
-    count = 0;
-    if (game.turn() === 'w' && colorToMove === 'black') {
-      colorToMove = 'white'
-    }
-    const possibleMoves = game.moves();
-    //console.log(possibleMoves)
-    if (game.game_over() || possibleMoves.length === 0) {
-      if(game.in_checkmate()) {
-        if (game.turn() === 'b') {
-          setStateOfGame('White wins by checkmate')
-        } else {
-          setStateOfGame('Black wins by checkmate')
+    testing2();
+    return new Promise((resolve, reject) => {
+      count = 0;
+      if (game.turn() === 'w' && colorToMove === 'black') {
+        colorToMove = 'white'
+      }
+      const possibleMoves = game.moves();
+      
+      //console.log(possibleMoves)
+      if (game.game_over() || possibleMoves.length === 0) {
+        if(game.in_checkmate()) {
+          if (game.turn() === 'b') {
+            setStateOfGame('White wins by checkmate')
+          } else {
+            setStateOfGame('Black wins by checkmate')
+          }
         }
-      }
 
-      if (game.in_draw()) {
-        if (game.insufficient_material()) {
-          setStateOfGame('Game over - draw by insufficient material')
+        if (game.in_draw()) {
+          if (game.insufficient_material()) {
+            setStateOfGame('Game over - draw by insufficient material')
+          }
+          setStateOfGame('Game over - draw by 50 move rule')
         }
-        setStateOfGame('Game over - draw by 50 move rule')
-      }
 
-      if (game.in_stalemate()) {
-        setStateOfGame('Draw by stalemate')
-      }
+        if (game.in_stalemate()) {
+          setStateOfGame('Draw by stalemate')
+        }
 
-      if (game.in_threefold_repetition()) {
-        setStateOfGame('Draw by reptition')
+        if (game.in_threefold_repetition()) {
+          setStateOfGame('Draw by reptition')
+        }
+        return;
       }
-      return;
-    }
-    console.time("Move time")
-    game.move(minimax(game, searchDepth, 0, -10000, 10000, evaluation(game)));
-    console.timeEnd("Move time")
-    console.log("Positions Searched: " + nodeNum)
+      console.time("Move time")
+      const moved = game.move(minimax(game, searchDepth, 0, -10000, 10000, evaluation(game)));
+      if(moved.san.includes("x") === true){
+        var temp = pieceNum - 1;
+        setPieceNum(temp);
+      }
+      console.timeEnd("Move time")
+      console.log("Positions Searched: " + nodeNum)
+    })
   }
   // eval of current board at targetdepth
 
@@ -146,9 +172,9 @@ export default function App({ boardWidth }) {
     if (depth === 0) {
       nodeNum++;
       if(game.turn() === 'b'){
-        return (-gameEval / 8);// + quiescenceEval(game); //returns the cumulative eval
+        return (-gameEval / 8) - quiescenceEval(game); //returns the cumulative eval
       }else{
-        return (gameEval / 8);// - quiescenceEval(game);
+        return (gameEval / 8) + quiescenceEval(game);
       }
     }
 
@@ -189,10 +215,10 @@ export default function App({ boardWidth }) {
     
     if(distanceFromRoot === 0){
       setEval(-bestEval)
-      //if(bestMove.includes("x") === true){
-        //var temp = pieceNum - 1;
-        //setPieceNum(temp)
-      //}
+      // if(bestMove.includes("x") === true){
+      //   var temp = pieceNum - 1;
+      //   setPieceNum(temp)
+      // }
       return bestMove;
     }
     return alpha;
@@ -296,7 +322,11 @@ export default function App({ boardWidth }) {
     
     if(move === 'O-O' || move === 'O-O-O'){ //should implement a check for pawn structure
       //shortcastles
-      score += 2
+      if(color === 'b'){
+        score -= 2
+      }else{
+        score += 2
+      }
       if(color === 'b'){
         return prevEval - score; 
       }else{
@@ -425,9 +455,6 @@ export default function App({ boardWidth }) {
     }else{
       score += 0//quiescenceEval(game)
     }
-    //console.log(game.ascii())
-    //console.log(game.pgn())
-    //console.log(score)
     return score;
   }
 
@@ -482,6 +509,12 @@ export default function App({ boardWidth }) {
       to: targetSquare,
       promotion: 'q' // always promote to a queen for example simplicity
     });
+    if(move !== null){
+      if(move.san.includes("x") === true){
+        var temp = pieceNum - 1;
+        setPieceNum(temp);
+      }
+    }
     setGame(gameCopy);
     // safeGameMutate((game) => {
     //   game.move({
@@ -591,6 +624,7 @@ export default function App({ boardWidth }) {
           setPrevGameStates(states)
           // clear premove queue
           chessboardRef.current.clearPremoves();
+          setPieceNum(32)
           // stop any current timeouts
           clearTimeout(currentTimeout);
           setGameState('')
@@ -674,7 +708,7 @@ export default function App({ boardWidth }) {
         <h1>
           {color}
           {" "}
-          {currentEval}
+          {pieceNum}
           {" "}
           {"Depth: " + searchDepth}
         </h1>
