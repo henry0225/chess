@@ -12,18 +12,20 @@ endgame can make pawns worth more etc.
 -make engine play checkmate
 -store json in a file
 Front end:
--Make the buttons look prettier and display color as well as current game state
+-Make the Buttons look prettier and display color as well as current game state
 
 -column for move order
 */
 import { useRef, useState, useEffect } from 'react';
 import { Chessboard } from 'react-chessboard';
-import {moveOrdering, squareToInt, intToSquare, pieceValue} from './utils.js';
+import {squareToInt, intToSquare, pieceValue} from './utils.js';
 import {pawn, knight, bishop, rook, queen, king} from './pieceTables.js';
 //import {intToSquare} from './utils.js';
 import './App.css';
 import file from './samples.txt';
 import Chess from 'chess.js';
+import Button from '@mui/material/Button';
+const LichessOpeningExporer = require('lichess-opening-explorer');
 
 export default function App({ boardWidth }) {
   const chessboardRef = useRef(); // magic ref thing 
@@ -37,7 +39,7 @@ export default function App({ boardWidth }) {
   var [boardOrientation, setBoardOrientation] = useState('white');
 
   // game logic
-  var [color, setColor] = useState('white')
+  var [playerColor, setPlayerColor] = useState('w')
   var [engineColor, setEngineColor] = useState('black')
   var [stateOfGame, setStateOfGame] = useState('') //in game, checkmate, stalemate
   var [gameState, setGameState] = useState('opening') //opening, middlegame, endgame
@@ -48,18 +50,25 @@ export default function App({ boardWidth }) {
 
   const [text, setText] = useState()
 
-  var [currentEval, setEval] = useState();
+  var [currentEval, setEval] = useState(0);
   var [searchDepth, setSearchDepth] = useState(3);
+  var [testFlags, setTestFlags] = useState();
   var count = 0;
-
   const isFirstRender = useRef(true)
   const runEffect = useRef(true)
+
+  
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false // toggle flag after first render/mounting
       return;
     }
-    makeMove(engineColor)
+    // if (game.move() <= 8){
+    //   nothing();
+    // }
+    // else {
+      makeMove(engineColor)
+    // }
   }, [runEffect.current])
 
   useEffect(() => {
@@ -90,40 +99,46 @@ export default function App({ boardWidth }) {
     // })
   }, [])
 
-  function testing2(){
-    var testGame = new Chess();
-    testGame.load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
-    // var testGameCopy = new Chess();
-    // testGameCopy.load_pgn(testGame.pgn())
-    // var prevEval = 0;
-    // var t1 = testGame.move("e4")
-    // var curEval = trackingEval(testGameCopy, prevEval, t1, "e4")
-    // console.log(curEval)
-    
-    // prevEval = curEval;
-    // testGameCopy.load_pgn(testGame.pgn())
-    // t1 = testGame.move("d5")
-    // curEval = trackingEval(testGameCopy, prevEval, t1, "d5")
-    // console.log(curEval)
-
-
-
-    // prevEval = curEval;
-    // testGameCopy.load_pgn(testGame.pgn())
-    // t1 = testGame.move("exd5")
-    // curEval = trackingEval(testGameCopy, prevEval, t1, "exd5")
-    // console.log(curEval)
-    testGame.move("d5")
-    console.log(testGame.ascii())
-  }
+  
 
   function makeRandom(){
     var moves = game.moves()
     game.move(moves[0])
   }
-  function makeMove(colorToMove) {
-    testing2();
-    return new Promise((resolve, reject) => {
+
+  // const nothing = () => {
+  //   var url = "https://chess.apurn.com/nextmove";
+
+  //   var xhr = new XMLHttpRequest();
+  //   xhr.open("POST", url);
+
+  //   xhr.setRequestHeader("Content-Type", "text/plain");
+
+  //   xhr.onreadystatechange = function () {
+  //     if (xhr.readyState === 4) {
+  //         console.log(xhr.status);
+  //         console.log(xhr.responseText);
+  //         return xhr.responseText;
+  //     }};
+
+  //   xhr.send(game.fen());
+  // }
+
+  async function makeMove(colorToMove) {
+    let explorer = new LichessOpeningExporer();
+ 
+    explorer.analyze(game.fen(), {
+      master: false,
+      variant: 'standard',
+      speeds: ['blitz', 'rapid', 'classical'],
+      ratings: ["unlimited"]
+    })
+    .then(analysis => {
+      // do something genious
+      console.log(analysis)
+      var randomNum = Math.floor(Math.random() * 3)
+      
+      if (analysis.moves.length >= 3) {game.move(analysis.moves[randomNum].san); console.log(analysis.moves[randomNum].san); return}
       count = 0;
       if (game.turn() === 'w' && colorToMove === 'black') {
         colorToMove = 'white'
@@ -157,14 +172,19 @@ export default function App({ boardWidth }) {
         return;
       }
       console.time("Move time")
-      const moved = game.move(minimax(game, searchDepth, 0, -10000, 10000, evaluation(game)));
-      if(moved.san.includes("x") === true){
-        var temp = pieceNum - 1;
-        setPieceNum(temp);
-      }
+      const moved = game.move(minimax(game, searchDepth, 0, -1000000, 1000000, currentEval));//fix
+      console.log(moved)
+      // console.log(moved.san)
+      // if(moved.san.includes("x") === true){
+      //   var temp = pieceNum - 1;
+      //   setPieceNum(temp);
+      // }
       console.timeEnd("Move time")
       console.log("Positions Searched: " + nodeNum)
     })
+    .catch(err => {
+      console.error(err);
+    });
   }
   // eval of current board at targetdepth
 
@@ -172,9 +192,9 @@ export default function App({ boardWidth }) {
     if (depth === 0) {
       nodeNum++;
       if(game.turn() === 'b'){
-        return (-gameEval / 8) - quiescenceEval(game); //returns the cumulative eval
+        return (-gameEval) - (2 * (quiescenceEval(game))); //returns the cumulative eval
       }else{
-        return (gameEval / 8) + quiescenceEval(game);
+        return (gameEval) + (2 * (quiescenceEval(game)));
       }
     }
 
@@ -183,7 +203,7 @@ export default function App({ boardWidth }) {
 
     var moves = game.moves();
     //console.log(moves)
-    moveOrdering(moves);
+    moveOrdering(moves, game);
     //console.log(moves)
     var bestMove = null;
     var bestEval = null;
@@ -193,8 +213,16 @@ export default function App({ boardWidth }) {
       const moveInfo = gameCopy.move(moves[i])
 
       var curGameCopy = new Chess()//static board to eval, before the move so we know which piece was taken if a capture occurs
-      curGameCopy.load(game.fen())
-      var curEval = trackingEval(curGameCopy, prevEval, moveInfo, moves[i]); //returns the OBJECTIVE eval for the current move for current move sequence
+      curGameCopy.load_pgn(game.pgn())
+      var curEval = trackingEval(curGameCopy, game.turn(), prevEval, moveInfo, moves[i]); //returns the OBJECTIVE eval for the current move for current move sequence
+      if(gameCopy.in_checkmate() === true){
+        if(curGameCopy.turn() === 'w'){//white's turn on the current board so white made the checkmate
+          
+          return 10000
+        }else{
+          return -10000
+        }
+      }
       var evaluated = -minimax(gameCopy, depth - 1, distanceFromRoot + 1, -beta, -alpha, curEval);//pass down the current eval for that move
       if (evaluated >= beta) {
         //console.log("pruned")
@@ -206,7 +234,7 @@ export default function App({ boardWidth }) {
       if (evaluated > alpha){
         alpha = evaluated
         bestMove = moves[i]
-        bestEval = evaluated;
+        //bestEval = evaluated;
         if (distanceFromRoot === 0) {
           bestEval = evaluated;
         }
@@ -214,7 +242,11 @@ export default function App({ boardWidth }) {
     }
     
     if(distanceFromRoot === 0){
-      setEval(-bestEval)
+      if(engineColor === 'b'){
+        setEval(bestEval)
+      }else{
+        setEval(-bestEval)
+      }
       // if(bestMove.includes("x") === true){
       //   var temp = pieceNum - 1;
       //   setPieceNum(temp)
@@ -222,6 +254,32 @@ export default function App({ boardWidth }) {
       return bestMove;
     }
     return alpha;
+  }
+
+  function moveOrdering(moves, game) {
+      var counter = 0;
+      for (let i = 0; i < moves.length; i++){
+        var captures = moves[i].includes("x")
+        var checks = moves[i].includes("+")
+        if (captures === true || checks === true){
+          var temp = moves[counter];
+          moves[counter] = moves[i];
+          moves[i] = temp;
+          counter++
+        }
+      }
+      var counter2 = 0;
+      for(let i = 0; i < counter; i++){
+        var game = new Chess(game.fen())
+        if(game.get(moves[i].substring(moves[i].includes("x") + 1, moves[i].includes("x") + 3)) !== null){
+          if(game.get(moves[i].substring(moves[i].includes("x") + 1, moves[i].includes("x") + 3).type !== 'p')){
+            var temp = moves[counter2];
+            moves[counter2] = moves[i];
+            moves[i] = temp;
+            counter2++
+          }
+        }
+      }
   }
 
   function quiescenceChecking(moves) {//returns a boolean that decides whether the position is quiet or not
@@ -242,21 +300,27 @@ export default function App({ boardWidth }) {
     for (let i = 0; i < moves.length; i++){
       var result = moves[i].includes("x")
       if(result === true){
-        console.log(game.ascii())
         var square = moves[i].substring(moves[i].indexOf("x") + 1, moves[i].indexOf("x") + 3)
         var gameCopy = new Chess();
         gameCopy.load_pgn(game.pgn())
         var t = gameCopy.move(moves[i])
-        if(t.flags === 'e'){
-          console.log(game.turn())
-          console.log(moves[i])
-          console.log(square)
-          if(game.turn() === 'w'){
-            square = intToSquare(squareToInt(square) + 8)
-          }else{
-            square = intToSquare(squareToInt(square) - 8)
+        // if(t === null){
+        //   setTestFlags("null !")
+        // }else{
+        //   setTestFlags(t)
+        // }
+        if(t !== null){
+          if(t.flags === 'e'){
+            // console.log(game.turn())
+            // console.log(moves[i])
+            // console.log(square)
+            if(game.turn() === 'w'){
+              square = intToSquare(squareToInt(square) + 8)
+            }else{
+              square = intToSquare(squareToInt(square) - 8)
+            }
+            //console.log(square)
           }
-          console.log(square)
         }
         var piece = game.get(square).type;
         if(piece === 'q'){
@@ -295,7 +359,7 @@ export default function App({ boardWidth }) {
 
   
 
-  function trackingEval(game, prevEval, moveInfo, move){//"game" is before the move
+  function trackingEval(game, turnColor, prevEval, moveInfo, move){//"game" is before the move
     //console.time("trackingEval")
     var score = 0;
     var afterMove = new Chess()
@@ -318,17 +382,17 @@ export default function App({ boardWidth }) {
     var fromSq = moveInfo.from;
     var toSq = moveInfo.to;
     var piece = moveInfo.piece;
-    var color = game.turn()//the one making this move
+    var color = turnColor//the one making this move
     
     if(move === 'O-O' || move === 'O-O-O'){ //should implement a check for pawn structure
       //shortcastles
       if(color === 'b'){
-        score -= 2
+        score += 4
       }else{
-        score += 2
+        score -= 4
       }
       if(color === 'b'){
-        return prevEval - score; 
+        return prevEval + score; 
       }else{
         return prevEval - score;
       }
@@ -461,7 +525,6 @@ export default function App({ boardWidth }) {
   
 
   
-
   function onDrop(sourceSquare, targetSquare) {
     
     var temp = new Chess()
@@ -503,8 +566,15 @@ export default function App({ boardWidth }) {
       }
       return;
     }
-    const gameCopy = { ...game };
-    const move = gameCopy.move({
+    const gameCopy = new Chess(game.pgn())//{ ...game };
+    // safeGameMutate((game) => {
+    //   game.move({
+    //     from: sourceSquare,
+    //     to: targetSquare,
+    //     promotion: 'q' // always promote to a queen for example simplicity
+    //   })
+    // })
+    const move = game.move({
       from: sourceSquare,
       to: targetSquare,
       promotion: 'q' // always promote to a queen for example simplicity
@@ -514,15 +584,11 @@ export default function App({ boardWidth }) {
         var temp = pieceNum - 1;
         setPieceNum(temp);
       }
+      setEval(trackingEval(gameCopy, playerColor, currentEval, move, move.san))
     }
-    setGame(gameCopy);
-    // safeGameMutate((game) => {
-    //   game.move({
-    //     from: sourceSquare,
-    //     to: targetSquare,
-    //     promotion: 'q' // always promote to a queen for example simplicity
-    //   })
-    // })
+    //setGame(gameCopy);
+    
+    
 
     // illegal move
     if (move === null) return false;
@@ -612,10 +678,11 @@ export default function App({ boardWidth }) {
         }}
         ref={chessboardRef}
       />
-
-
-      <button
-        className="rc-button"
+      <div>{' '}</div>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      <Button
+        className="rc-Button"
+        variant='outlined'
         onClick={() => {
           game.reset()
           console.log("Game Resetted")
@@ -635,16 +702,17 @@ export default function App({ boardWidth }) {
         }}
       >
         reset
-      </button>
-      <button
-        className="rc-button"
+      </Button>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      <Button
+        className="rc-Button"
+        variant='outlined'
         onClick={() => {
           // undo twice to undo computer move too
-          console.log(prevGameStates)
-
           game.load_pgn(prevGameStates[prevGameStates.length - 1]);
           var copy = prevGameStates.splice(prevGameStates.length - 2, 1)
           setPrevGameStates(copy)
+          setEval(0)
           console.log("Attempted undo")
           // clear premove queue
 
@@ -658,10 +726,11 @@ export default function App({ boardWidth }) {
         }}
       >
         undo
-      </button>
-
-      <button
-        className="rc-button"
+      </Button>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      <Button
+        className="rc-Button"
+        variant='outlined'
         onClick={() => {
 
           console.log("Game Resetted")
@@ -675,15 +744,15 @@ export default function App({ boardWidth }) {
 
           setBoardOrientation((currentOrientation) => (currentOrientation === 'black' ? 'white' : 'black'));
           game.reset();
-          if (color === 'white') {
+          if (playerColor === 'w') {
             console.log("Attempted Color swap")
-            setColor('black')
+            setPlayerColor('b')
             setEngineColor('white')
           } else {
-            setColor('white')
+            setPlayerColor('w')
             setEngineColor('black')
           }
-          if (color === 'white') {
+          if (playerColor === 'w') {
             console.log("Move Attempted")
             makeMove(engineColor);
           }
@@ -694,21 +763,25 @@ export default function App({ boardWidth }) {
         }}
       >
         change color
-      </button>
-
-      <button
-        className="rc-button"
+      </Button>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      <Button
+        className="rc-Button"
+        variant='outlined'
         onClick={() => {
           setBoardOrientation((currentOrientation) => (currentOrientation === 'black' ? 'white' : 'black'));
         }}
       >
         flip board
-      </button>
+      </Button>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gridGap: 30 }}>
         <h1>
-          {color}
+          {playerColor}
           {" "}
           {pieceNum}
+          {" "}
+          {currentEval / 8}
           {" "}
           {"Depth: " + searchDepth}
         </h1>

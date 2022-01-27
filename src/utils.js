@@ -1,17 +1,6 @@
+
 import {pawn, knight, bishop, rook, queen, king} from './pieceTables.js';
-export function moveOrdering(moves) {
-      var counter = 0;
-      for (let i = 0; i < moves.length; i++){
-        var captures = moves[i].includes("x")
-        var checks = moves[i].includes("+")
-        if (captures === true || checks === true){
-          var temp = moves[counter];
-          moves[counter] = moves[i];
-          moves[i] = temp;
-          counter++
-        }
-      }
-  }
+
 
 export function pieceValue(piece, squareName, color){
     var square = squareToInt(squareName);
